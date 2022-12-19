@@ -16,15 +16,15 @@ public class DiscoBot_JL extends AdvancedRobot {
 	private byte scanDirection = 1;
 	private byte moveDirection = 1;;
 	private Random random = new Random();
-	/*private _botRadar radar;
-	private _botTank tank; 
-	private _botCannon cannon;
-	static int corner = 0;*/
 	private RobotStatus robotStatus; 
 	private double currentX;
 	private double currentY;
 	private int fieldArea;
 	
+	/*private _botRadar radar;
+	private _botTank tank; 
+	private _botCannon cannon;
+	static int corner = 0;*/
 	
     public void run() {
     	
@@ -38,9 +38,11 @@ public class DiscoBot_JL extends AdvancedRobot {
     while (true) {
 		setTurnRadarRight(360);
 		doMove();
-		int randColor = random.nextInt((255 - 0) + 1) + 0;
+		
 		setColors(new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0), new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0), new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0));
 		
+		
+		// Corner targeting
   /*  	for(int i = 0; i < 18; i++) {
     	turnGunLeft(5); 
     	turnRadarLeft(5);
@@ -48,17 +50,20 @@ public class DiscoBot_JL extends AdvancedRobot {
     	for(int i = 0; i < 18; i++) {
 
     	turnRadarRight(5);
-    	turnGunRight(5);
+    	turnGunRight(5); bbbb                  
     	}*/
+		
 		execute();
     }
 
         }
+  
+    //Change direction on Wall hit
    // public void onHitWall(HitWallEvent e) { moveDirection *= -1; }
   //  public void onHitRobot(HitRobotEvent e) { moveDirection *= -1; }
 
     
-    //Move to specific Cordinaten
+    //Move to specific Cordinates
     private void goTo(double x, double y) {
         x = x - this.robotStatus.getX();
         y = y - this.robotStatus.getY();
@@ -71,24 +76,24 @@ public class DiscoBot_JL extends AdvancedRobot {
     }
     
    
-    
+    //Mover to Corner
 	public void goCorner() {
-		// We don't want to stop when we're just turning...
-		// turn to face the wall to the "right" of our desired corner.
+		// face Wall
 		turnRight(Utils.normalRelativeAngleDegrees(0 - getHeading()));
-		// Ok, now we don't want to crash into any robot in our way...
-		// Move to that wall
+		//Move to Wall
 		ahead(5000);
-		// Turn to face the corner
+		// face Corner
 		turnLeft(90);
-		// Move to the corner
+		// Move Wall
 		ahead(5000);
+		
 		// Turn gun to starting point
 		turnGunLeft(90);
 		setAdjustGunForRobotTurn(true);
 		setAdjustRadarForGunTurn(true);
-
 	}
+	
+	// get bearing towards 2 objects  
 	double absoluteBearing(double x1, double y1, double x2, double y2) {
 		double xo = x2-x1;
 		double yo = y2-y1;
@@ -106,19 +111,20 @@ public class DiscoBot_JL extends AdvancedRobot {
 			bearing = 180 - arcSin; // arcsin is negative here, actually 180 + ang
 		}
 		
-		
-
 		return bearing;
 	}
 	
+	// degree to bearing
 	double normalizeBearing(double angle) {
 		while (angle >  180) angle -= 360;
 		while (angle < -180) angle += 360;
 		return angle;
 	}
 
+	
     public void onScannedRobot(ScannedRobotEvent e) {
     	
+    	// setting currentEnemy to nearest
     	if (
     			// we have no currentEnemy, or...
     			currentEnemy.none() ||
@@ -130,29 +136,28 @@ public class DiscoBot_JL extends AdvancedRobot {
     			// track him
     			currentEnemy.update(e, this);
     		}
-    	// calculate gun turn to predicted x,y location
-    
-    
-    	
 
+    	//scan again
+    	scanDirection *= -1; 
+    	setTurnRadarRight(360 * scanDirection);
     	
         
-        scanDirection *= -1; // changes value from 1 to -1
-    	setTurnRadarRight(360 * scanDirection);
-    	setTurnGunRight(getHeading() - getGunHeading() + e.getBearing());
-    	//fire(3);
-    	//fire(3);
+    
     	
-    	//try predictive targetting
+    	//try predictive targeting
     	//get time bullet needs to arrive
     	long time = (long)(currentEnemy.getDistance() / Math.min(400 / currentEnemy.getDistance(), 3));
     	
+    	// get future enemy Position --> enemyBot class
     	double futureX = currentEnemy.getFutureX(time);
     	double futureY = currentEnemy.getFutureY(time);
-    	double absDeg = absoluteBearing(getX(), getY(), futureX, futureY);
+    	double absoluteDegrees = absoluteBearing(getX(), getY(), futureX, futureY);
+    	
     	// turn the gun to the predicted x,y location
-    	setTurnGunRight(normalizeBearing(absDeg - getGunHeading()));
+    	setTurnGunRight(normalizeBearing(absoluteDegrees - getGunHeading()));
 
+    	// shot if not overheated 
+    	// adjust bullet streght to distance -> high distance low bullet
     	if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10)
         	setFire(Math.min(400 / currentEnemy.getDistance(), 3));
     	
@@ -160,21 +165,25 @@ public class DiscoBot_JL extends AdvancedRobot {
     }
    
     
+    // reset currentEnemy if robot dies
     public void onRobotDeath(RobotDeathEvent e) {
     	if (e.getName().equals(currentEnemy.getName())) {
     		currentEnemy.reset();
     	}
     }
+    
+    // get Status 
     public void onStatus(StatusEvent e) {
       this.robotStatus = e.getStatus();
     }  
     
+    
+    // set movement
     public void doMove(){
-    	// always square off against our enemy
-    	//setTurnRight(currentEnemy.getBearing() + 90);
+    	//turn sideways to enemy
     	setTurnRight(normalizeBearing(currentEnemy.getBearing() + 90 - (15 * moveDirection)));
 
-    	// strafe by changing direction every 20 ticks
+    	//change direction every 20 ticks
     	if (getTime() % 20 == 0) {
     		moveDirection *= -1;
     		setAhead(150 * moveDirection);
