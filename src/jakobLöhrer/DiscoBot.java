@@ -10,7 +10,7 @@ import java.awt.Color;
 import java.util.Random;
 
 
-public class DiscoBot_JL extends AdvancedRobot {
+public class DiscoBot extends AdvancedRobot {
 	
 	private EnemyBot currentEnemy = new EnemyBot();
 	private byte scanDirection = 1;
