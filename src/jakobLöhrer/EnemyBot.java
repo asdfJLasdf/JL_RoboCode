@@ -1,9 +1,9 @@
+package jakobLöhrer;
 import robocode.ScannedRobotEvent;
 import robocode.Robot;
 
 public class EnemyBot {
 	
-	//http://mark.random-article.com/weber/java/ch5/lab4.html
 	private double bearing, distance, energy, heading,  velocity;
 	
 	private double x, y; 
@@ -48,7 +48,27 @@ public class EnemyBot {
 		this.name = e.getName();
 	}
 	
-	public void update(ScannedRobotEvent e, Robot robot)
+	//Predictive targetting
+	public void update(ScannedRobotEvent e, Robot robot) {
+		this.update(e);
+		
+		double absBearingDeg = (robot.getHeading() + e.getBearing());
+		if (absBearingDeg < 0) absBearingDeg += 360;
+		
+		// yes, you use the _sine_ to get the X value because 0 deg is North
+		x = robot.getX() + Math.sin(Math.toRadians(absBearingDeg)) * e.getDistance();
+		
+		// yes, you use the _cosine_ to get the Y value because 0 deg is North
+		y = robot.getY() + Math.cos(Math.toRadians(absBearingDeg)) * e.getDistance();
+	
+	}
+	
+	double getFutureX(long when){
+		return x + Math.sin(Math.toRadians(getHeading())) * getVelocity() * when;	
+	}
+	
+	double getFutureY(long when){
+		return y + Math.cos(Math.toRadians(getHeading())) * getVelocity() * when;	}
 	
 	public void reset() {
 		this.bearing = 0;

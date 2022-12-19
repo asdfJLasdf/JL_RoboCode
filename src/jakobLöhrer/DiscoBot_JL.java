@@ -1,16 +1,21 @@
+package jakobLöhrer;
 import robocode.AdvancedRobot;
+
 
 import robocode.*;
 import robocode.util.Utils;
 import java.lang.Math;
+import java.awt.geom.Point2D;
+import java.awt.Color;
+import java.util.Random;
 
-//http://mark.random-article.com/weber/java/robocode/lesson4.html
 
-public class bot extends AdvancedRobot {
+public class DiscoBot_JL extends AdvancedRobot {
 	
 	private EnemyBot currentEnemy = new EnemyBot();
 	private byte scanDirection = 1;
-	
+	private byte moveDirection = 1;;
+	private Random random = new Random();
 	/*private _botRadar radar;
 	private _botTank tank; 
 	private _botCannon cannon;
@@ -20,7 +25,9 @@ public class bot extends AdvancedRobot {
 	private double currentY;
 	private int fieldArea;
 	
+	
     public void run() {
+    	
     	currentEnemy.reset();
     	setAdjustRadarForRobotTurn(true);
     	setAdjustGunForRobotTurn(true);
@@ -30,8 +37,10 @@ public class bot extends AdvancedRobot {
 	
     while (true) {
 		setTurnRadarRight(360);
-    	
-    	
+		doMove();
+		int randColor = random.nextInt((255 - 0) + 1) + 0;
+		setColors(new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0), new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0), new Color(random.nextInt((255 - 0) + 1) + 0,random.nextInt((255 - 0) + 1) + 0, random.nextInt((255 - 0) + 1) + 0));
+		
   /*  	for(int i = 0; i < 18; i++) {
     	turnGunLeft(5); 
     	turnRadarLeft(5);
@@ -45,10 +54,11 @@ public class bot extends AdvancedRobot {
     }
 
         }
-
+   // public void onHitWall(HitWallEvent e) { moveDirection *= -1; }
+  //  public void onHitRobot(HitRobotEvent e) { moveDirection *= -1; }
 
     
-    //Move to specific Cordinates
+    //Move to specific Cordinaten
     private void goTo(double x, double y) {
         x = x - this.robotStatus.getX();
         y = y - this.robotStatus.getY();
@@ -79,7 +89,33 @@ public class bot extends AdvancedRobot {
 		setAdjustRadarForGunTurn(true);
 
 	}
+	double absoluteBearing(double x1, double y1, double x2, double y2) {
+		double xo = x2-x1;
+		double yo = y2-y1;
+		double hyp = Point2D.distance(x1, y1, x2, y2);
+		double arcSin = Math.toDegrees(Math.asin(xo / hyp));
+		double bearing = 0;
 
+		if (xo > 0 && yo > 0) { // both pos: lower-Left
+			bearing = arcSin;
+		} else if (xo < 0 && yo > 0) { // x neg, y pos: lower-right
+			bearing = 360 + arcSin; // arcsin is negative here, actuall 360 - ang
+		} else if (xo > 0 && yo < 0) { // x pos, y neg: upper-left
+			bearing = 180 - arcSin;
+		} else if (xo < 0 && yo < 0) { // both neg: upper-right
+			bearing = 180 - arcSin; // arcsin is negative here, actually 180 + ang
+		}
+		
+		
+
+		return bearing;
+	}
+	
+	double normalizeBearing(double angle) {
+		while (angle >  180) angle -= 360;
+		while (angle < -180) angle += 360;
+		return angle;
+	}
 
     public void onScannedRobot(ScannedRobotEvent e) {
     	
@@ -92,12 +128,13 @@ public class bot extends AdvancedRobot {
     			e.getName().equals(currentEnemy.getName())
     			) {
     			// track him
-    			currentEnemy.update(e);
+    			currentEnemy.update(e, this);
     		}
+    	// calculate gun turn to predicted x,y location
+    
+    
     	
-    	if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10)
-        	setFire(Math.min(400 / currentEnemy.getDistance(), 3));
-    	
+
     	
         
         scanDirection *= -1; // changes value from 1 to -1
@@ -110,7 +147,18 @@ public class bot extends AdvancedRobot {
     	//get time bullet needs to arrive
     	long time = (long)(currentEnemy.getDistance() / Math.min(400 / currentEnemy.getDistance(), 3));
     	
+    	double futureX = currentEnemy.getFutureX(time);
+    	double futureY = currentEnemy.getFutureY(time);
+    	double absDeg = absoluteBearing(getX(), getY(), futureX, futureY);
+    	// turn the gun to the predicted x,y location
+    	setTurnGunRight(normalizeBearing(absDeg - getGunHeading()));
+
+    	if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10)
+        	setFire(Math.min(400 / currentEnemy.getDistance(), 3));
+    	
+    
     }
+   
     
     public void onRobotDeath(RobotDeathEvent e) {
     	if (e.getName().equals(currentEnemy.getName())) {
@@ -119,7 +167,19 @@ public class bot extends AdvancedRobot {
     }
     public void onStatus(StatusEvent e) {
       this.robotStatus = e.getStatus();
-    }    
+    }  
+    
+    public void doMove(){
+    	// always square off against our enemy
+    	//setTurnRight(currentEnemy.getBearing() + 90);
+    	setTurnRight(normalizeBearing(currentEnemy.getBearing() + 90 - (15 * moveDirection)));
+
+    	// strafe by changing direction every 20 ticks
+    	if (getTime() % 20 == 0) {
+    		moveDirection *= -1;
+    		setAhead(150 * moveDirection);
+    	}
+    }
 
 
 }
